@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Monitoreo de IPs</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.7.1/dist/leaflet.css" />
+</head>
+<body>
+    <h1>Monitoreo de Direcciones IP</h1>
+
+    <form method="get" action="/">
+        <label for="estado">Filtrar por estado:</label>
+        <select name="estado" id="estado">
+            <option value="Todos" {% if estado == 'Todos' %}selected{% endif %}>Todos</option>
+            <option value="Confiable" {% if estado == 'Confiable' %}selected{% endif %}>Confiable</option>
+            <option value="Sospechosa" {% if estado == 'Sospechosa' %}selected{% endif %}>Sospechosa</option>
+            <option value="Maliciosa" {% if estado == 'Maliciosa' %}selected{% endif %}>Maliciosa</option>
+        </select>
+        <button type="submit">Filtrar</button>
+    </form>
+
+    <table border="1">
+        <tr>
+            <th>IP</th>
+            <th>País</th>
+            <th>Ciudad</th>
+            <th>Puntaje de Riesgo</th>
+            <th>Clasificación</th>
+        </tr>
+        {% for ip in datos_ip %}
+        <tr>
+            <td>
+                {% if ip.classification == 'Maliciosa' %}
+                    <span style="color: red;">&#9888;</span>
+                {% endif %}
+                {{ ip.ip_address }}
+            </td>
+            <td>{{ ip.country }}</td>
+            <td>{{ ip.city }}</td>
+            <td>{{ ip.risk_score }}</td>
+            <td>{{ ip.classification }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <div id="mapa"></div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script>
+        var mapa = L.map('mapa').setView([0, 0], 2);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(mapa);
+
+        var datos_ip = {{ datos_ip|tojson }};
+        var icono_rojo_url = "{{ url_for('static', filename='images/icono_rojo.png') }}";
+        var icono_verde_url = "{{ url_for('static', filename='images/icono_verde.png') }}";
+
+        datos_ip.forEach(function(ip) {
+            if (ip.latitude && ip.longitude) {
+                var iconoUrl = ip.classification == 'Maliciosa' ? icono_rojo_url : icono_verde_url;
+                var icono = L.icon({
+                    iconUrl: iconoUrl,
+                    iconSize: [25, 41],
+                    iconAnchor: [12, 41],
+                    popupAnchor: [1, -34],
+                });
+                L.marker([ip.latitude, ip.longitude], { icon: icono }).addTo(mapa)
+                 .bindPopup(`IP: ${ip.ip_address}<br>Estado: ${ip.classification}`);
+            }
+        });
+    </script>
+</body>
+</html>
